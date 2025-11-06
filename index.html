@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ReflectaX</title>
+  <meta name="description" content="Transmission Line Fault Location via Time Domain Reflectometry"/>
+
+  <style>
+    :root{
+      --bg:#0a0f12; --panel:#0f1519; --text:#d8e6e1; --muted:#9bb5ac;
+      --accent:#36ff8f; --accent-dim:#1ecf6d; --glow:0 0 10px rgba(54,255,143,.35),0 0 20px rgba(54,255,143,.15);
+      --warn:#ffd166; --bad:#ff5c80;
+      --radius:14px; --rsm:10px; --gap:16px; --maxw:1040px;
+    }
+    html{scroll-behavior:smooth}
+    body{
+      margin:0; color:var(--text);
+      background:
+        radial-gradient(1200px 800px at 70% -10%, rgba(54,255,143,.07), transparent 60%),
+        radial-gradient(800px 600px at 10% 110%, rgba(0,168,255,.06), transparent 60%),
+        var(--bg);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      line-height:1.6;
+    }
+    .container{width:min(92vw, var(--maxw)); margin:0 auto}
+    header{padding:56px 0 12px}
+    .brand{display:flex; gap:10px; align-items:center; color:var(--muted); letter-spacing:.08em; font-size:12px; text-transform:uppercase}
+    .dot{width:8px; height:8px; border-radius:50%; background:var(--accent); box-shadow:var(--glow)}
+
+    /* Landing */
+    .landing{
+      min-height:85vh; display:grid; place-items:center; text-align:center; padding:60px 0 100px;
+      position:relative; overflow:hidden;
+    }
+    .landing::before{
+      content:''; position:absolute; width:600px; height:600px; top:50%; left:50%;
+      transform:translate(-50%,-50%); background:radial-gradient(circle, rgba(54,255,143,.12), transparent 70%);
+      border-radius:50%; animation:pulse 8s ease-in-out infinite; pointer-events:none;
+    }
+    @keyframes pulse{0%,100%{opacity:.6; transform:translate(-50%,-50%) scale(1);} 50%{opacity:.3; transform:translate(-50%,-50%) scale(1.2);}}
+    .landing-content{position:relative; z-index:1; max-width:720px; padding:0 20px}
+    .landing h1{
+      font-size:clamp(38px, 7vw, 64px); margin:0 0 16px; letter-spacing:.02em;
+      background:linear-gradient(135deg, #d8e6e1 0%, #36ff8f 60%, #d8e6e1 100%);
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+      text-shadow:0 0 30px rgba(54,255,143,.4);
+      animation:fadeInDown 0.8s ease-out;
+    }
+    @keyframes fadeInDown{from{opacity:0; transform:translateY(-20px);} to{opacity:1; transform:translateY(0);}}
+    .landing p{
+      color:var(--muted); margin:0 0 42px; font-size:clamp(14px,2.5vw,16px);
+      line-height:1.8; letter-spacing:.01em;
+      animation:fadeInUp 0.8s ease-out 0.2s both;
+    }
+    @keyframes fadeInUp{from{opacity:0; transform:translateY(20px);} to{opacity:1; transform:translateY(0);}}
+    .landing .btn{
+      animation:fadeInUp 0.8s ease-out 0.4s both;
+      font-size:15px; padding:16px 32px; border-width:1.5px;
+    }
+    .btn{
+      appearance:none; border:1px solid rgba(54,255,143,.45); color:var(--text);
+      background:linear-gradient(180deg, rgba(54,255,143,.08), rgba(54,255,143,.02));
+      padding:14px 22px; border-radius:var(--rsm); cursor:pointer; font-weight:600; letter-spacing:.02em; box-shadow:var(--glow);
+      transition:transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+    }
+    .btn:hover{transform:translateY(-1px); box-shadow:0 0 0 1px rgba(54,255,143,.25), 0 0 22px rgba(54,255,143,.25);
+      background:linear-gradient(180deg, rgba(54,255,143,.14), rgba(54,255,143,.04));}
+
+    .section-h{margin:36px 0 18px; color:var(--muted); letter-spacing:.08em; font-size:12px; text-transform:uppercase}
+
+    /* Cards */
+    .cards{display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:var(--gap)}
+    .card{
+      background:linear-gradient(180deg, rgba(255,255,255,.02), rgba(0,0,0,.1));
+      border:1px solid rgba(54,255,143,.25); border-radius:var(--radius); padding:18px;
+      box-shadow:inset 0 0 0 1px rgba(54,255,143,.08);
+    }
+    .card.interactive{cursor:pointer; transition:transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease}
+    .card.interactive:hover{transform:translateY(-2px); border-color:rgba(54,255,143,.5); box-shadow:var(--glow)}
+    .card-title{font-weight:700; font-size:16px; margin-bottom:6px}
+    .card-sub{color:var(--muted); font-size:13px}
+
+    /* Panel */
+    .panel{display:grid; grid-template-columns:1.1fr 1.1fr; gap:calc(var(--gap) + 4px); align-items:start}
+    .group{display:grid; gap:var(--gap)}
+    .field{display:grid; gap:8px; background:var(--panel); border:1px solid rgba(54,255,143,.2); border-radius:var(--radius); padding:14px}
+    .field label{font-size:13px; color:var(--muted); letter-spacing:.02em}
+    .row{display:flex; gap:10px; align-items:center}
+    input[type="number"], input[type="text"]{
+      width:100%; background:rgba(255,255,255,.03); border:1px solid rgba(54,255,143,.25);
+      border-radius:10px; padding:10px 12px; color:var(--text); outline:none;
+      transition:border-color 160ms ease, box-shadow 160ms ease;
+    }
+    input[type="number"]:focus, input[type="text"]:focus{border-color:rgba(54,255,143,.55); box-shadow:0 0 0 3px rgba(54,255,143,.12)}
+    .unit{color:var(--muted); font-size:13px; min-width:48px; text-align:right}
+    .radios{display:flex; gap:14px; flex-wrap:wrap}
+    .radio{display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:999px; border:1px solid rgba(54,255,143,.25);
+      background:rgba(255,255,255,.03); cursor:pointer; user-select:none; transition:border-color 160ms ease, box-shadow 160ms ease, background 160ms ease}
+    .radio:hover{border-color:rgba(54,255,143,.5); box-shadow:var(--glow); background:rgba(54,255,143,.04)}
+    .calc{
+      width:100%; border:1px solid rgba(54,255,143,.55); color:#001b0c;
+      background:linear-gradient(180deg, var(--accent), var(--accent-dim));
+      padding:14px 18px; border-radius:12px; cursor:pointer; font-weight:800; letter-spacing:.04em; text-transform:uppercase;
+      box-shadow:0 6px 22px rgba(54,255,143,.25); transition:transform 120ms ease, filter 120ms ease, box-shadow 120ms ease;
+    }
+    .calc:hover{transform:translateY(-1px); filter:saturate(1.1); box-shadow:0 10px 26px rgba(54,255,143,.35)}
+
+    .outputs{display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:var(--gap)}
+    .out{background:linear-gradient(180deg, rgba(255,255,255,.02), rgba(0,0,0,.1)); border:1px solid rgba(54,255,143,.25);
+      border-radius:var(--radius); padding:16px; min-height:92px}
+    .out-l{color:var(--muted); font-size:12px; letter-spacing:.08em; text-transform:uppercase; margin-bottom:8px}
+    .out-v{font-size:clamp(18px, 3.2vw, 24px); font-weight:700}
+    .note{margin-top:14px; color:var(--muted); font-size:13px}
+    .note small{display:block; opacity:.9}
+
+    footer{color:var(--muted); font-size:12px; text-align:center; padding:28px 0 48px; opacity:.8}
+    footer .love{color:var(--accent); font-weight:600}
+
+    /* CSV canvas */
+    #tdrCanvas{
+      background:
+        radial-gradient(400px 200px at 75% -10%, rgba(54,255,143,.05), transparent 60%),
+        linear-gradient(180deg, rgba(255,255,255,.02), rgba(0,0,0,.10));
+      border:1px solid rgba(54,255,143,.25);
+      box-shadow:inset 0 0 0 1px rgba(54,255,143,.08);
+      border-radius:14px;
+      width:100%; height:auto;
+    }
+
+    /* Responsive */
+    @media (max-width: 960px){
+      .panel{grid-template-columns:1fr}
+      .outputs{grid-template-columns:1fr}
+      .cards{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+ 
+
+  <!-- Landing -->
+  <section id="landing" class="landing container" aria-labelledby="title">
+    <div class="landing-content">
+      <h1 id="title">ReflectaX</h1>
+      <p>Time Domain Pulse echo system for cable Fault detection</p>
+      <button id="startBtn" class="btn" aria-label="Start Analysis and jump to cable types">Start Analysis</button>
+    </div>
+  </section>
+
+  <!-- Cable Type Selection -->
+  <section id="cables" class="container" aria-labelledby="cableHeading">
+    <div class="section-h" id="cableHeading">Cable Type Selection</div>
+    <div class="cards" role="list">
+      <article class="card interactive" role="button" tabindex="0" data-vf="0.66" aria-label="Cat6 LAN, VF 0.66">
+        <div class="card-title">Cat6 LAN</div>
+        <div class="card-sub">VF default: 0.66</div>
+      </article>
+      <article class="card interactive" role="button" tabindex="0" data-vf="0.66" aria-label="Coax RG58, VF 0.66">
+        <div class="card-title">Coax RG58</div>
+        <div class="card-sub">VF default: 0.66</div>
+      </article>
+      <article class="card interactive" role="button" tabindex="0" data-vf="0.50" aria-label="USB Cable, VF 0.50">
+        <div class="card-title">USB Cable</div>
+        <div class="card-sub">VF default: 0.50</div>
+      </article>
+    </div>
+  </section>
+
+  <!-- Analysis Panel -->
+  <section id="analysis" class="container" aria-labelledby="analysisHeading" style="margin-top:28px; margin-bottom:24px;">
+    <div class="section-h" id="analysisHeading">Analysis Panel</div>
+    <div class="panel">
+      <!-- Inputs -->
+      <div class="group" aria-label="Inputs">
+        <div class="field">
+          <label for="dt">Δt (Reflection Roundtrip Time)</label>
+          <div class="row">
+            <input id="dt" type="number" step="any" inputmode="decimal" placeholder="e.g. 120" aria-describedby="dtHelp unitDt"/>
+            <div class="unit" id="unitDt">ns</div>
+          </div>
+          <small id="dtHelp" class="note"><span>Enter time difference measured on oscilloscope or auto-filled from CSV.</span></small>
+        </div>
+
+        <div class="field">
+          <label for="vf">Velocity Factor (VF)</label>
+          <div class="row">
+            <input id="vf" type="number" step="any" inputmode="decimal" placeholder="0.66" aria-describedby="vfHelp"/>
+          </div>
+          <small id="vfHelp" class="note"><span>Fraction of the speed of light (0–1). Editable for calibration.</span></small>
+        </div>
+
+        <div class="field">
+          <label>Reflection Direction</label>
+          <div class="radios" role="radiogroup" aria-label="Reflection direction">
+            <label class="radio"><input type="radio" name="refl" value="UP" checked/> UP (Open)</label>
+            <label class="radio"><input type="radio" name="refl" value="DOWN"/> DOWN (Short)</label>
+            <label class="radio"><input type="radio" name="refl" value="NONE"/> NONE (Matched)</label>
+          </div>
+        </div>
+
+        <button id="calcBtn" class="calc">Calculate</button>
+      </div>
+
+      <!-- Outputs -->
+      <div class="group" aria-label="Outputs">
+        <div class="outputs">
+          <div class="out">
+            <div class="out-l">Fault Type</div>
+            <div id="faultType" class="out-v">—</div>
+          </div>
+          <div class="out">
+            <div class="out-l">Propagation Velocity</div>
+            <div id="velocity" class="out-v">—</div>
+          </div>
+          <div class="out">
+            <div class="out-l">Distance to Fault</div>
+            <div id="distance" class="out-v">—</div>
+          </div>
+        </div>
+        <div class="note" id="notes" aria-live="polite" style="margin-top:10px;">
+          <small>OPEN → positive reflection (Γ = +1)</small>
+          <small>SHORT → negative reflection (Γ = –1)</small>
+          <small>MATCHED → minimal reflection (Γ ≈ 0)</small>
+          <small>Formula: <b>L = VF × c × Δt / 2</b>, with c = 3×10⁸ m/s</small>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CSV Upload + Plot -->
+  <section id="csvplot" class="container" aria-labelledby="csvHeading" style="margin-top:18px;">
+    <div class="section-h" id="csvHeading">CSV Waveform (Upload & Auto-Detect Δt)</div>
+    <div class="panel">
+      <div class="group">
+        <div class="field">
+          <label for="csvFile">Upload CSV (columns: Second, Volt)</label>
+          <input id="csvFile" type="file" accept=".csv,text/csv"/>
+          <small class="note"><span>Time in <b>seconds</b> (will be plotted as <b>nanoseconds</b>).</span></small>
+        </div>
+        <div class="field">
+          <label>Graph Size</label>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            <div class="row">
+              <label for="canvasWidth" style="font-size:12px; color:var(--muted); min-width:60px;">Width:</label>
+              <input id="canvasWidth" type="number" step="50" min="400" max="2000" value="1000" style="flex:1"/>
+              <div class="unit" style="min-width:30px;">px</div>
+            </div>
+            <div class="row">
+              <label for="canvasHeight" style="font-size:12px; color:var(--muted); min-width:60px;">Height:</label>
+              <input id="canvasHeight" type="number" step="20" min="200" max="800" value="340" style="flex:1"/>
+              <div class="unit" style="min-width:30px;">px</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="out" style="padding:0;">
+          <canvas id="tdrCanvas" width="1000" height="340" aria-label="Waveform plot"></canvas>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="container">• Made with <span class="love">love</span> <3 by our team</footer>
+
+  <script>
+    /* ====== constants & helpers ====== */
+    const c = 3e8; // m/s
+
+    const fmt = (n, d=3)=>{
+      if(!isFinite(n)) return "—";
+      if(Math.abs(n)>=1e6 || Math.abs(n)<1e-2) return Number(n).toExponential(2);
+      return Number(n).toLocaleString(undefined,{maximumFractionDigits:d});
+    };
+
+    /* ====== DOM refs ====== */
+    const startBtn = document.getElementById("startBtn");
+    const vfInput  = document.getElementById("vf");
+    const dtInput  = document.getElementById("dt");
+    const calcBtn  = document.getElementById("calcBtn");
+    const faultEl  = document.getElementById("faultType");
+    const velEl    = document.getElementById("velocity");
+    const distEl   = document.getElementById("distance");
+    const cards    = Array.from(document.querySelectorAll(".card.interactive"));
+
+    /* Landing → Cable */
+    startBtn.addEventListener("click", ()=> {
+      document.getElementById("cables").scrollIntoView({behavior:"smooth", block:"start"});
+    });
+
+    /* Cable card sets default VF → scroll to analysis */
+    cards.forEach(card=>{
+      const apply=()=>{
+        const vf = Number(card.dataset.vf || "0.66");
+        vfInput.value = vf.toString();
+        document.getElementById("analysis").scrollIntoView({behavior:"smooth", block:"start"});
+        vfInput.focus();
+      };
+      card.addEventListener("click", apply);
+      card.addEventListener("keydown", e=>{
+        if(e.key==="Enter" || e.key===" "){ e.preventDefault(); apply(); }
+      });
+    });
+
+    vfInput.placeholder="0.66";
+
+    function faultFrom(dir){
+      if(dir==="UP") return "Open Fault";
+      if(dir==="DOWN") return "Short Fault";
+      if(dir==="NONE") return "Matched / No Fault";
+      return "—";
+    }
+    function computeVelocity(vf){ return vf * c; }
+    function computeDistance(dt_ns, vf){
+      const dt_s = dt_ns * 1e-9;
+      return (vf * c * dt_s)/2;
+    }
+
+    function handleCalc(){
+      const dt_ns = Number(dtInput.value);
+      const vf = Number(vfInput.value||0);
+      const dirEl = document.querySelector('input[name="refl"]:checked');
+      const dir = dirEl ? dirEl.value : "UP";
+
+      const okVF = isFinite(vf) && vf>0 && vf<=1;
+      const okDT = isFinite(dt_ns) && dt_ns>=0;
+      if(!okVF || !okDT){
+        if(!okVF) vfInput.setAttribute("aria-invalid","true"); else vfInput.removeAttribute("aria-invalid");
+        if(!okDT) dtInput.setAttribute("aria-invalid","true"); else dtInput.removeAttribute("aria-invalid");
+        faultEl.textContent = velEl.textContent = distEl.textContent = "—";
+        return;
+      }
+
+      const v = computeVelocity(vf);
+      const L = computeDistance(dt_ns, vf);
+
+      faultEl.textContent = faultFrom(dir);
+      velEl.textContent   = fmt(v,0) + " m/s";
+      distEl.textContent  = fmt(L,3) + " m";
+    }
+    calcBtn.addEventListener("click", handleCalc);
+    dtInput.addEventListener("keydown", e=>{ if(e.key==="Enter") handleCalc(); });
+    vfInput.addEventListener("keydown", e=>{ if(e.key==="Enter") handleCalc(); });
+
+    /* ====== CSV Plot + auto-Δt ====== */
+    const csvInput = document.getElementById('csvFile');
+    const cvs = document.getElementById('tdrCanvas');
+    const ctx = cvs.getContext('2d');
+    const canvasWidthInput = document.getElementById('canvasWidth');
+    const canvasHeightInput = document.getElementById('canvasHeight');
+    
+    // Store current plot data for re-drawing on resize
+    let currentPlotData = null;
+
+    function parseCSV(text){
+      const lines = text.trim().split(/\r?\n/).filter(Boolean);
+      // assume first line is header "Second,Volt"
+      const start = /[A-Za-z]/.test(lines[0]) ? 1 : 0;
+      const t=[], v=[];
+      for(let i=start;i<lines.length;i++){
+        const [a,b] = lines[i].split(/,|;|\t/).map(s=>s.trim());
+        const ts = Number(a), vv = Number(b);
+        if(isFinite(ts) && isFinite(vv)){ t.push(ts); v.push(vv); }
+      }
+      // sort by time
+      const idx = t.map((_,i)=>i).sort((i,j)=>t[i]-t[j]);
+      return { t: idx.map(i=>t[i]), v: idx.map(i=>v[i]) };
+    }
+    const smooth=(arr,w=5)=>{
+      if(w<=1) return arr.slice();
+      const out=new Array(arr.length), k=Math.floor(w/2);
+      for(let i=0;i<arr.length;i++){
+        let s=0,c=0; for(let j=i-k;j<=i+k;j++){ if(j>=0&&j<arr.length){ s+=arr[j]; c++; } }
+        out[i]=s/c;
+      } return out;
+    };
+    const diff=(y,x)=>{
+      const d=new Array(y.length).fill(0);
+      for(let i=1;i<y.length;i++){ const dy=y[i]-y[i-1], dx=x[i]-x[i-1]; d[i]=dx!==0? dy/dx : 0; }
+      return d;
+    };
+
+    function detectEdges(t_s, v){
+      const vSm=smooth(v,5); const dvdt=diff(vSm,t_s); const abs=dvdt.map(Math.abs); const N=abs.length;
+      // launch = max |dv/dt|
+      let i0=0; for(let i=1;i<N;i++) if(abs[i]>abs[i0]) i0=i;
+      // guard: 5% total span or 0.5us
+      const total=t_s[N-1]-t_s[0], guard=Math.max(0.5e-6, 0.05*total), tguard=t_s[i0]+guard;
+      const th=0.4*abs[i0];
+      let i1=-1;
+      for(let i=i0+1;i<N;i++){ if(t_s[i]<tguard) continue; if(abs[i]>=th){ i1=i; break; } }
+      if(i1<0){ let best=-1, val=0; for(let i=i0+1;i<N;i++){ if(t_s[i]<tguard) continue; if(abs[i]>val){ val=abs[i]; best=i; } } i1=best; }
+      let suggest='—';
+      if(i1>=0){
+        const same = Math.sign(dvdt[i1]) === Math.sign(dvdt[i0]);
+        suggest = same ? 'UP (Open?)' : 'DOWN (Short?)';
+      }
+      return {i0,i1,suggest};
+    }
+
+    function drawPlot(t_ns, v, markers=null){
+      if(!t_ns || !t_ns.length) return;
+      const padL=50,padR=20,padT=16,padB=36;
+      ctx.clearRect(0,0,cvs.width,cvs.height);
+      ctx.strokeStyle='rgba(54,255,143,.3)';
+      ctx.strokeRect(padL,padT, cvs.width-padL-padR, cvs.height-padT-padB);
+
+      const xmin=Math.min(...t_ns), xmax=Math.max(...t_ns);
+      const ymin=Math.min(...v), ymax=Math.max(...v);
+      const xw=(xmax-xmin)||1, yw=(ymax-ymin)||1;
+      const X=ns=> padL + ((ns-xmin)/xw)*(cvs.width-padL-padR);
+      const Y=vv=> padT + (1-((vv-ymin)/yw))*(cvs.height-padT-padB);
+
+      // grid
+      ctx.font='12px ui-sans-serif'; ctx.fillStyle='rgba(216,230,225,.9)'; ctx.strokeStyle='rgba(54,255,143,.15)';
+      for(let k=0;k<=5;k++){
+        const xn = xmin + (k/5)*xw, x=X(xn);
+        ctx.beginPath(); ctx.moveTo(x,padT); ctx.lineTo(x,cvs.height-padB); ctx.stroke();
+        ctx.fillText(xn.toFixed(0)+' ns', x-18, cvs.height-padB+18);
+      }
+      for(let k=0;k<=5;k++){
+        const yn = ymin + (k/5)*yw, y=Y(yn);
+        ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(cvs.width-padR,y); ctx.stroke();
+        ctx.fillText(yn.toFixed(2)+' V', 8, y+4);
+      }
+
+      // waveform
+      ctx.strokeStyle='rgba(54,255,143,.9)'; ctx.lineWidth=1.5;
+      ctx.beginPath();
+      for(let i=0;i<t_ns.length;i++){
+        const x=X(t_ns[i]), y=Y(v[i]);
+        if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+      }
+      ctx.stroke();
+
+      if(markers){
+        ctx.fillStyle='rgba(255,92,128,.9)'; // launch
+        const x0=X(markers.t0), y0=Y(markers.v0); ctx.beginPath(); ctx.arc(x0,y0,4,0,2*Math.PI); ctx.fill();
+        if(markers.t1!=null){
+          ctx.fillStyle='rgba(0,168,255,.9)'; // reflection
+          const x1=X(markers.t1), y1=Y(markers.v1); ctx.beginPath(); ctx.arc(x1,y1,4,0,2*Math.PI); ctx.fill();
+        }
+      }
+    }
+
+    function resizeCanvas(){
+      const w = Math.max(400, Math.min(2000, Number(canvasWidthInput.value) || 1000));
+      const h = Math.max(200, Math.min(800, Number(canvasHeightInput.value) || 340));
+      cvs.width = w;
+      cvs.height = h;
+      cvs.style.width = w + 'px';
+      cvs.style.height = h + 'px';
+      // Re-draw if we have plot data
+      if(currentPlotData){
+        drawPlot(currentPlotData.t_ns, currentPlotData.v, currentPlotData.markers);
+      }
+    }
+    
+    canvasWidthInput?.addEventListener('input', resizeCanvas);
+    canvasHeightInput?.addEventListener('input', resizeCanvas);
+    canvasWidthInput?.addEventListener('change', resizeCanvas);
+    canvasHeightInput?.addEventListener('change', resizeCanvas);
+
+    csvInput?.addEventListener('change', ()=>{
+      const f = csvInput.files?.[0]; if(!f) return;
+      const fr = new FileReader();
+      fr.onload = ()=>{
+        const text = String(fr.result||'');
+        const {t, v} = parseCSV(text);
+        if(!t.length) return;
+
+        // seconds -> ns for plotting
+        const t_ns = t.map(s=> s*1e9);
+
+        // detect edges
+        const {i0, i1, suggest} = detectEdges(t, v);
+        const t0ns = (i0>=0? t[i0]*1e9 : null);
+        const t1ns = (i1>=0? t[i1]*1e9 : null);
+
+        const markers = (i0>=0? {t0:t0ns, v0:v[i0], t1:t1ns, v1:(i1>=0? v[i1]:null)} : null);
+        
+        // Store plot data for re-drawing on resize
+        currentPlotData = {t_ns, v, markers};
+        
+        drawPlot(t_ns, v, markers);
+
+        if(t0ns!=null && t1ns!=null){
+          const dtns = Math.abs(t1ns - t0ns);
+          dtInput.value = dtns.toFixed(1); // auto-fill main Δt
+        }
+
+        if(suggest.startsWith('UP'))      document.querySelector('input[name="refl"][value="UP"]').checked = true;
+        else if(suggest.startsWith('DOWN')) document.querySelector('input[name="refl"][value="DOWN"]').checked = true;
+      };
+      fr.readAsText(f);
+    });
+    
+    // Initialize canvas size
+    resizeCanvas();
+  </script>
+</body>
+</html>
