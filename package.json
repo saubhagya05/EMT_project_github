@@ -1,0 +1,17 @@
+{
+  "name": "reflectax",
+  "version": "1.0.0",
+  "description": "Transmission Line Fault Location via Time Domain Reflectometry",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "keywords": [
+    "tdr",
+    "fault-detection",
+    "transmission-line"
+  ],
+  "author": "",
+  "license": "MIT"
+}
+
